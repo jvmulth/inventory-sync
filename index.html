@@ -481,7 +481,17 @@ function setProgress(pct) {
 }
 
 async function api(query) {
-  if (mondayAPI) return mondayAPI(query);
+  if (window.mondayAPI) return window.mondayAPI(query);
+  // Fallback: try localStorage token directly
+  const t = localStorage.getItem('inv_sync_token');
+  if (t) {
+    const res = await fetch('https://api.monday.com/v2', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': t, 'API-Version': '2024-01' },
+      body: JSON.stringify({ query })
+    });
+    return res.json();
+  }
   throw new Error('Monday SDK not connected');
 }
 
