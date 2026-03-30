@@ -543,7 +543,7 @@ async function startSync() {
       boards(ids:[${boardId}]) {
         groups { id title }
         items_page(limit:500) {
-          items { id name group { id } subitems { id name } }
+          items { id name group { id } subitems { id name column_values { id text } } }
         }
       }
     }`);
@@ -604,6 +604,7 @@ async function startSync() {
               column_values: "${esc(cv)}"
             ) { id }
           }`);
+          // Subitems will update the rollup total automatically
           itemId = existing.id;
           log('  updated: ' + productName + ' → ' + info.total.toLocaleString(), 'ok');
           updated++;
@@ -626,13 +627,25 @@ async function startSync() {
         await delay(150);
 
         // Subitems — check existing by name, create if missing
-        const existingSubs = new Set(
-          (existing?.subitems || []).map(s => s.name)
-        );
+        // Map existing subitems by Inventory ID (first segment of name before ' · ')
+        const existingSubsByInvId = {};
+        (existing?.subitems || []).forEach(s => {
+          const invIdPart = s.name.split(' · ')[0].trim();
+          existingSubsByInvId[invIdPart] = s.id;
+        });
 
         for (const lot of info.lots) {
           const subName = lot.invId + ' · ' + lot.lot + ' · ' + lot.total.toLocaleString();
-          if (!existingSubs.has(subName)) {
+          const existingSubId = existingSubsByInvId[lot.invId];
+          if (existingSubId) {
+            // Update existing subitem name (which contains the updated total)
+            await api(`mutation {
+              change_simple_column_value(board_id: ${boardId}, item_id: ${existingSubId}, column_id: "name", value: "${esc(subName)}") { id }
+            }`);
+            log('    ~ ' + lot.invId + ' ' + lot.lot + ' → ' + lot.total.toLocaleString(), 'ok');
+            subUpdated++;
+            await delay(150);
+          } else {
             const res = await api(`mutation {
               create_subitem(parent_item_id: ${itemId}, item_name: "${esc(subName)}") { id }
             }`);
@@ -657,7 +670,7 @@ async function startSync() {
 
     document.getElementById('sdone').classList.remove('hid');
     document.getElementById('sdonemsg').textContent =
-      created + ' items created · ' + updated + ' updated · ' + subCreated + ' subitems added';
+      created + ' items created · ' + updated + ' updated · ' + subCreated + ' subitems new · ' + subUpdated + ' subitems updated';
 
   } catch(err) {
     log('Error: ' + err.message, 'err');
