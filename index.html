@@ -314,7 +314,7 @@
 </div>
 
 <script>
-// ─── Config ───────────────────────────────────────────────
+// --- Config -----------------------------------------------
 const BOARD_ID_FALLBACK = 18403841373; // fallback if SDK doesn't provide context
 const COL_TOTAL    = 'numeric_mm1dvn32';
 const COL_DATE     = 'date_mm1t1exm';
@@ -330,14 +330,14 @@ const CATEGORIES = [
   { key:'hash',   label:'Hash Hole' },
 ];
 
-// ─── State ────────────────────────────────────────────────
+// --- State ------------------------------------------------
 let mondayAPI = null;
 let boardId   = BOARD_ID_FALLBACK;
 let loaded    = {};
 let parsed    = {};
 let preview   = {};
 
-// ─── Auth ─────────────────────────────────────────────────────────────────────
+// --- Auth ---------------------------------------------------------------------
 function mFetch(q) {
   const t = localStorage.getItem('inv_sync_token');
   if (!t) throw new Error('no token');
@@ -383,7 +383,7 @@ if (_saved) {
   document.getElementById('tokenSection').style.display = 'block';
 }
 
-// ─── Step nav ─────────────────────────────────────────────
+// --- Step nav ---------------------------------------------
 function go(n) {
   [1,2,3].forEach(i => {
     document.getElementById('s'+i).classList.toggle('active', i===n);
@@ -391,7 +391,7 @@ function go(n) {
   });
 }
 
-// ─── File grid ────────────────────────────────────────────
+// --- File grid --------------------------------------------
 function buildGrid() {
   const g = document.getElementById('fgrid');
   g.innerHTML = '';
@@ -469,7 +469,7 @@ function updateNote() {
   document.getElementById('btnprev').disabled = n === 0;
 }
 
-// ─── Consolidate ──────────────────────────────────────────
+// --- Consolidate ------------------------------------------
 function consolidate(rows) {
   const products = {};
   rows.forEach(r => {
@@ -485,7 +485,7 @@ function consolidate(rows) {
   return products;
 }
 
-// ─── Preview ──────────────────────────────────────────────
+// --- Preview ----------------------------------------------
 function buildPreview() {
   preview = {};
   CATEGORIES.forEach(c => {
@@ -525,7 +525,7 @@ function showTab(key, el) {
   Object.entries(preview[key].products).forEach(([name, info]) => {
     const tr = document.createElement('tr');
     const lotsHtml = info.lots.map(l =>
-      `<span>${l.invId} · ${l.lot} · ${l.total.toLocaleString()}</span>`
+      `<span>${l.invId} - ${l.lot} - ${l.total.toLocaleString()}</span>`
     ).join('');
     tr.innerHTML = `
       <td class="pname">${name}</td>
@@ -536,7 +536,7 @@ function showTab(key, el) {
   });
 }
 
-// ─── Sync ─────────────────────────────────────────────────
+// --- Sync -------------------------------------------------
 function esc(s) { return s.replace(/\\/g, '\\\\').replace(/"/g, '\\"'); }
 function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 function setProgress(pct) {
@@ -586,7 +586,7 @@ async function startSync() {
     }`);
 
     const board = bd?.data?.boards?.[0];
-    if (!board) { log('Board not found — check board ID.', 'err'); return; }
+    if (!board) { log('Board not found - check board ID.', 'err'); return; }
 
     log('Board loaded: ' + board.groups.length + ' groups, ' + board.items_page.items.length + ' items', 'ok');
 
@@ -621,7 +621,7 @@ async function startSync() {
         log('Group created: ' + cat.label, 'ok');
       }
 
-      log('— ' + cat.label, 'grp');
+      log('- ' + cat.label, 'grp');
 
       for (const [productName, info] of Object.entries(preview[cat.key].products)) {
         const existing = itemMap[productName.toLowerCase()];
@@ -643,7 +643,7 @@ async function startSync() {
           }`);
           // Subitems will update the rollup total automatically
           itemId = existing.id;
-          log('  updated: ' + productName + ' → ' + info.total.toLocaleString(), 'ok');
+          log('  updated: ' + productName + ' - ' + info.total.toLocaleString(), 'ok');
           updated++;
         } else {
           // Create new item
@@ -663,23 +663,23 @@ async function startSync() {
 
         await delay(150);
 
-        // Subitems — check existing by name, create if missing
-        // Map existing subitems by Inventory ID (first segment of name before ' · ')
+        // Subitems - check existing by name, create if missing
+        // Map existing subitems by Inventory ID (first segment of name before ' - ')
         const existingSubsByInvId = {};
         (existing?.subitems || []).forEach(s => {
-          const invIdPart = s.name.split(' · ')[0].trim();
+          const invIdPart = s.name.split(' - ')[0].trim();
           existingSubsByInvId[invIdPart] = s.id;
         });
 
         for (const lot of info.lots) {
-          const subName = lot.invId + ' · ' + lot.lot + ' · ' + lot.total.toLocaleString();
+          const subName = lot.invId + ' - ' + lot.lot + ' - ' + lot.total.toLocaleString();
           const existingSubId = existingSubsByInvId[lot.invId];
           if (existingSubId) {
             // Update existing subitem name (which contains the updated total)
             await api(`mutation {
               change_simple_column_value(board_id: ${boardId}, item_id: ${existingSubId}, column_id: "name", value: "${esc(subName)}") { id }
             }`);
-            log('    ~ ' + lot.invId + ' ' + lot.lot + ' → ' + lot.total.toLocaleString(), 'ok');
+            log('    ~ ' + lot.invId + ' ' + lot.lot + ' - ' + lot.total.toLocaleString(), 'ok');
             subUpdated++;
             await delay(150);
           } else {
@@ -707,14 +707,14 @@ async function startSync() {
 
     document.getElementById('sdone').classList.remove('hid');
     document.getElementById('sdonemsg').textContent =
-      created + ' items created · ' + updated + ' updated · ' + subCreated + ' subitems new · ' + subUpdated + ' subitems updated';
+      created + ' items created - ' + updated + ' updated - ' + subCreated + ' subitems new - ' + subUpdated + ' subitems updated';
 
   } catch(err) {
     log('Error: ' + err.message, 'err');
   }
 }
 
-// ─── Reset ────────────────────────────────────────────────
+// --- Reset ------------------------------------------------
 function reset() {
   loaded = {}; parsed = {}; preview = {};
   buildGrid(); updateNote();
@@ -723,7 +723,7 @@ function reset() {
   go(1);
 }
 
-// ─── Init ─────────────────────────────────────────────────
+// --- Init -------------------------------------------------
 buildGrid();
 updateNote();
 </script>
