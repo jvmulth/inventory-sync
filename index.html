@@ -416,12 +416,49 @@ function onFile(key, inp) {
 }
 
 function parseCSV(txt) {
-  const lines = txt.replace(/^\uFEFF/,'').trim().split(/\r?\n/);
-  const hdrs  = lines[0].split(',').map(h => h.trim());
+  function parseLine(line) {
+    const fields = [];
+    let i = 0;
+    while (i < line.length) {
+      if (line[i] === '"') {
+        let field = '';
+        i++;
+        while (i < line.length) {
+          if (line[i] === '"' && line[i+1] === '"') { field += '"'; i += 2; }
+          else if (line[i] === '"') { i++; break; }
+          else { field += line[i++]; }
+        }
+        fields.push(field.trim());
+        if (line[i] === ',') i++;
+      } else {
+        const end = line.indexOf(',', i);
+        if (end === -1) { fields.push(line.slice(i).trim()); break; }
+        else { fields.push(line.slice(i, end).trim()); i = end + 1; }
+      }
+    }
+    return fields;
+  }
+  const raw = txt.replace(/^\uFEFF/, '');
+  const lines = [];
+  let cur = '', inQ = false;
+  for (let i = 0; i < raw.length; i++) {
+    if (raw[i] === '"') { inQ = !inQ; cur += raw[i]; }
+    else if ((raw[i] === '
+' || (raw[i] === '
+' && raw[i+1] === '
+')) && !inQ) {
+      if (raw[i] === '
+') i++;
+      if (cur.trim()) lines.push(cur);
+      cur = '';
+    } else { cur += raw[i]; }
+  }
+  if (cur.trim()) lines.push(cur);
+  const hdrs = parseLine(lines[0]);
   return lines.slice(1).map(l => {
-    const vals = l.split(',');
-    const row  = {};
-    hdrs.forEach((h,i) => row[h] = (vals[i]||'').trim());
+    const vals = parseLine(l);
+    const row = {};
+    hdrs.forEach((h, i) => row[h] = (vals[i] || '').trim());
     return row;
   });
 }
