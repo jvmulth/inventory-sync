@@ -4,424 +4,225 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Inventory Sync</title>
-
 <style>
-  :root {
-    --green: #1D9E75;
-    --green-dark: #0F6E56;
-    --green-light: #E1F5EE;
-    --green-text: #085041;
-    --amber: #BA7517;
-    --amber-light: #FAEEDA;
-    --red: #A32D2D;
-    --red-light: #FCEBEB;
-    --bg: #1c1f2b;
-    --bg2: #252836;
-    --bg3: #2e3248;
-    --border: rgba(255,255,255,0.08);
-    --text: #e8eaf0;
-    --text2: #9da3b4;
-    --text3: #6b7280;
-    --mono: 'Courier New', monospace;
-  }
-
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    font-size: 13px;
-    min-height: 100vh;
-  }
-
-  .app { max-width: 860px; margin: 0 auto; padding: 1.5rem; }
-
-  /* Header */
-  .header { margin-bottom: 1.5rem; }
-  .header h1 {
-    font-size: 17px; font-weight: 600; color: var(--text);
-    display: flex; align-items: center; gap: 8px;
-  }
-  .header h1 .dot {
-    width: 8px; height: 8px; border-radius: 50%; background: var(--green);
-  }
-  .header p { font-size: 12px; color: var(--text2); margin-top: 4px; padding-left: 16px; }
-
-  /* Steps */
-  .steps { display: flex; gap: 6px; margin-bottom: 1.5rem; }
-  .step {
-    flex: 1; padding: 8px 10px;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    font-size: 11px; color: var(--text3);
-    transition: all .2s;
-  }
-  .step.active {
-    border-color: var(--green);
-    background: rgba(29,158,117,0.12);
-    color: var(--green);
-  }
-  .step.done { border-color: rgba(29,158,117,0.3); color: var(--text3); }
-  .step .n { font-size: 10px; opacity: .6; margin-bottom: 2px; }
-  .step .l { font-weight: 600; }
-
-  /* Cards */
-  .card {
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 1.25rem;
-    margin-bottom: 1rem;
-  }
-  .sec {
-    font-size: 12px; font-weight: 600;
-    color: var(--text2); text-transform: uppercase;
-    letter-spacing: .06em; margin-bottom: 12px;
-  }
-
-  /* Form */
-  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
-  .fld { display: flex; flex-direction: column; gap: 5px; }
-  .fld label { font-size: 11px; font-weight: 500; color: var(--text2); }
-  .fld input {
-    background: var(--bg3); border: 1px solid var(--border);
-    border-radius: 6px; padding: 7px 10px;
-    color: var(--text); font-size: 13px;
-    outline: none; transition: border-color .15s;
-  }
-  .fld input:focus { border-color: var(--green); }
-  .fnote { font-size: 10px; color: var(--text3); margin-top: 2px; }
-
-  /* File grid */
-  .fgrid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 1rem; }
-  .slot {
-    border: 1px dashed rgba(255,255,255,0.15);
-    border-radius: 8px; padding: 10px 12px;
-    cursor: pointer; position: relative;
-    transition: all .15s;
-  }
-  .slot:hover { background: var(--bg3); border-color: rgba(255,255,255,0.25); }
-  .slot.ok { border-style: solid; border-color: var(--green); background: rgba(29,158,117,0.08); }
-  .slot .cat { font-size: 11px; font-weight: 600; color: var(--text2); }
-  .slot.ok .cat { color: var(--green); }
-  .slot .fn {
-    font-size: 10px; color: var(--text3); margin-top: 3px;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  }
-  .slot.ok .fn { color: rgba(29,158,117,0.7); }
-  .slot input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
-
-  /* Buttons */
-  .acts { display: flex; gap: 8px; align-items: center; }
-  .btn {
-    padding: 7px 16px; font-size: 13px; font-weight: 500;
-    border-radius: 6px; cursor: pointer;
-    border: 1px solid rgba(255,255,255,0.15);
-    background: transparent; color: var(--text);
-    transition: all .15s;
-  }
-  .btn:hover { background: var(--bg3); }
-  .btn.pri { background: var(--green); color: #fff; border-color: var(--green); }
-  .btn.pri:hover { background: var(--green-dark); }
-  .btn:disabled { opacity: .35; cursor: not-allowed; }
-  .anote { font-size: 11px; color: var(--text3); }
-
-  /* Stats */
-  .stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom: 1rem; }
-  .stat { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; }
-  .stat .v { font-size: 22px; font-weight: 700; color: var(--text); }
-  .stat .lb { font-size: 11px; color: var(--text2); margin-top: 2px; }
-
-  /* Tabs */
-  .tabs {
-    display: flex; gap: 4px; margin-bottom: 12px;
-    border-bottom: 1px solid var(--border); padding-bottom: 8px;
-    flex-wrap: wrap;
-  }
-  .tab {
-    padding: 4px 10px; font-size: 11px; border-radius: 99px;
-    cursor: pointer; border: 1px solid transparent;
-    color: var(--text2); transition: all .15s;
-  }
-  .tab.on {
-    border-color: rgba(255,255,255,0.15);
-    background: var(--bg3); color: var(--text); font-weight: 500;
-  }
-
-  /* Preview table */
-  .ptable { width: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed; }
-  .ptable th {
-    font-weight: 500; text-align: left; padding: 7px 8px;
-    border-bottom: 1px solid var(--border); color: var(--text2);
-    font-size: 11px; text-transform: uppercase; letter-spacing: .05em;
-  }
-  .ptable td { padding: 6px 8px; border-bottom: 1px solid rgba(255,255,255,0.04); vertical-align: top; }
-  .ptable tr:last-child td { border-bottom: none; }
-  .ptable tr:hover td { background: rgba(255,255,255,0.02); }
-  .pname { font-weight: 500; color: var(--text); }
-  .ptotal { font-variant-numeric: tabular-nums; color: var(--text); font-weight: 600; }
-  .sub { margin-top: 4px; }
-  .sub span {
-    display: block; font-size: 10px; color: var(--text3);
-    padding: 1px 0; font-family: var(--mono);
-  }
-  .badge {
-    display: inline-block; padding: 2px 7px;
-    border-radius: 99px; font-size: 10px; font-weight: 600;
-  }
-  .b-new { background: rgba(29,158,117,0.15); color: var(--green); }
-  .b-upd { background: rgba(186,117,23,0.15); color: var(--amber); }
-
-  /* Log */
-  .log {
-    background: #0d0f1a;
-    border: 1px solid var(--border);
-    border-radius: 8px; padding: 12px;
-    font-size: 11px; font-family: var(--mono);
-    max-height: 280px; overflow-y: auto;
-    line-height: 1.6;
-  }
-  .log::-webkit-scrollbar { width: 4px; }
-  .log::-webkit-scrollbar-track { background: transparent; }
-  .log::-webkit-scrollbar-thumb { background: var(--bg3); border-radius: 2px; }
-  .ll { padding: 1px 0; color: var(--text2); }
-  .ll.ok { color: var(--green); }
-  .ll.warn { color: var(--amber); }
-  .ll.err { color: var(--red); }
-  .ll.grp { color: #7c8cf8; font-weight: 600; }
-
-  /* Progress bar */
-  .progress-wrap {
-    height: 3px; background: var(--bg3);
-    border-radius: 99px; margin-bottom: 1rem; overflow: hidden;
-  }
-  .progress-bar {
-    height: 100%; background: var(--green);
-    border-radius: 99px; transition: width .3s ease;
-    width: 0%;
-  }
-
-  /* Status banner */
-  .banner {
-    padding: 10px 14px; border-radius: 8px;
-    font-size: 12px; font-weight: 500;
-    display: flex; align-items: center; gap: 8px;
-    margin-bottom: 1rem;
-  }
-  .banner.info { background: rgba(29,158,117,0.12); color: var(--green); border: 1px solid rgba(29,158,117,0.2); }
-  .banner.warn { background: var(--amber-light); color: var(--amber); border: 1px solid rgba(186,117,23,0.3); }
-
-  .hid { display: none !important; }
-
-  /* SDK status pill */
-  .sdk-pill {
-    display: inline-flex; align-items: center; gap: 5px;
-    padding: 3px 10px; border-radius: 99px;
-    font-size: 10px; font-weight: 600;
-    border: 1px solid var(--border);
-    margin-left: auto;
-  }
-  .sdk-pill .dot2 { width: 6px; height: 6px; border-radius: 50%; }
-  .sdk-pill.ok .dot2 { background: var(--green); }
-  .sdk-pill.err .dot2 { background: var(--red); }
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#1c1f2b;color:#e8eaf0;font-size:13px;min-height:100vh}
+.app{max-width:860px;margin:0 auto;padding:1.5rem}
+.hdr h1{font-size:17px;font-weight:600;color:#e8eaf0;display:flex;align-items:center;gap:8px}
+.hdr h1 .dot{width:8px;height:8px;border-radius:50%;background:#1D9E75}
+.hdr p{font-size:12px;color:#9da3b4;margin-top:4px;padding-left:16px}
+.steps{display:flex;gap:6px;margin:1.2rem 0}
+.step{flex:1;padding:8px 10px;border:1px solid rgba(255,255,255,0.08);border-radius:6px;font-size:11px;color:#6b7280}
+.step.active{border-color:#1D9E75;background:rgba(29,158,117,0.12);color:#1D9E75}
+.step .n{font-size:10px;opacity:.7;margin-bottom:2px}
+.step .l{font-weight:600}
+.card{background:#252836;border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:1.25rem;margin-bottom:1rem}
+.sec{font-size:12px;font-weight:600;color:#9da3b4;text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px}
+.fgrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:1rem}
+.slot{border:1px dashed rgba(255,255,255,0.15);border-radius:8px;padding:10px 12px;cursor:pointer;position:relative;transition:all .15s}
+.slot:hover{background:#2e3248}
+.slot.ok{border-style:solid;border-color:#1D9E75;background:rgba(29,158,117,0.08)}
+.slot .cat{font-size:11px;font-weight:600;color:#9da3b4}
+.slot.ok .cat{color:#1D9E75}
+.slot .fn{font-size:10px;color:#6b7280;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.slot.ok .fn{color:rgba(29,158,117,0.7)}
+.slot input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer}
+.acts{display:flex;gap:8px;align-items:center}
+.btn{padding:7px 16px;font-size:13px;font-weight:500;border-radius:6px;cursor:pointer;border:1px solid rgba(255,255,255,0.15);background:transparent;color:#e8eaf0;transition:all .15s}
+.btn:hover{background:#2e3248}
+.btn.pri{background:#1D9E75;color:#fff;border-color:#1D9E75}
+.btn.pri:hover{background:#0F6E56}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+.anote{font-size:11px;color:#6b7280}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:1rem}
+.stat{background:#252836;border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:10px 14px}
+.stat .v{font-size:22px;font-weight:700;color:#e8eaf0}
+.stat .lb{font-size:11px;color:#9da3b4;margin-top:2px}
+.tabs{display:flex;gap:4px;margin-bottom:12px;border-bottom:1px solid rgba(255,255,255,0.08);padding-bottom:8px;flex-wrap:wrap}
+.tab{padding:4px 10px;font-size:11px;border-radius:99px;cursor:pointer;border:1px solid transparent;color:#9da3b4;transition:all .15s}
+.tab.on{border-color:rgba(255,255,255,0.15);background:#2e3248;color:#e8eaf0;font-weight:500}
+.ptable{width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed}
+.ptable th{font-weight:500;text-align:left;padding:7px 8px;border-bottom:1px solid rgba(255,255,255,0.08);color:#9da3b4;font-size:11px;text-transform:uppercase;letter-spacing:.05em}
+.ptable td{padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.04);vertical-align:top}
+.ptable tr:last-child td{border-bottom:none}
+.sub{margin-top:4px}
+.sub span{display:block;font-size:10px;color:#6b7280;padding:1px 0;font-family:monospace}
+.log{background:#0d0f1a;border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:12px;font-size:11px;font-family:monospace;max-height:280px;overflow-y:auto;line-height:1.6}
+.ll{padding:1px 0;color:#9da3b4}
+.ll.ok{color:#1D9E75}
+.ll.warn{color:#BA7517}
+.ll.err{color:#A32D2D}
+.ll.grp{color:#7c8cf8;font-weight:600}
+.prog-wrap{height:3px;background:#2e3248;border-radius:99px;margin-bottom:1rem;overflow:hidden}
+.prog-bar{height:100%;background:#1D9E75;border-radius:99px;transition:width .3s ease;width:0%}
+.sdk-pill{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:99px;font-size:10px;font-weight:600;border:1px solid rgba(255,255,255,0.08);margin-left:auto}
+.sdk-pill .dot2{width:6px;height:6px;border-radius:50%}
+.sdk-pill.ok .dot2{background:#1D9E75}
+.sdk-pill.err .dot2{background:#A32D2D}
+.token-box{background:rgba(29,158,117,0.08);border:1px solid rgba(29,158,117,0.3);border-radius:8px;padding:12px 16px;margin-bottom:1.2rem}
+.token-box .lbl{font-size:11px;font-weight:600;color:#9da3b4;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+.token-row{display:flex;gap:8px}
+.token-row input{flex:1;background:#2e3248;border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:7px 10px;color:#e8eaf0;font-size:13px;outline:none}
+.token-row button{padding:7px 16px;background:#1D9E75;color:white;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:500}
+.token-note{font-size:10px;color:#6b7280;margin-top:6px}
+.hid{display:none!important}
 </style>
 </head>
 <body>
 <div class="app">
-
-  <!-- Header -->
-  <div class="header">
-    <h1>
-      <span class="dot"></span>
-      Inventory Sync
-      <span class="sdk-pill" id="sdkPill">
-        <span class="dot2"></span>
-        <span id="sdkStatus">connecting...</span>
-      </span>
-    </h1>
-    <p>Elevated Signals → Monday.com &nbsp;·&nbsp; items by product, subitems by Inventory ID / MAT lot</p>
+  <div class="hdr">
+    <h1><span class="dot"></span>Inventory Sync<span class="sdk-pill" id="sdkPill"><span class="dot2"></span><span id="sdkStatus">connecting...</span></span></h1>
+    <p>Elevated Signals &rarr; Monday.com &middot; items by product, subitems by Inventory ID / MAT lot</p>
   </div>
-
-  <!-- Steps -->
   <div class="steps">
     <div class="step active" id="s1"><div class="n">01</div><div class="l">Upload CSVs</div></div>
     <div class="step" id="s2"><div class="n">02</div><div class="l">Preview</div></div>
     <div class="step" id="s3"><div class="n">03</div><div class="l">Sync</div></div>
   </div>
-
-  <!-- STEP 1: Upload -->
-  
-  <!-- Token input (shown only when running outside Monday) -->
-  <div id="tokenSection" style="display:none;background:#1a1f35;border:1px solid rgba(29,158,117,0.3);border-radius:8px;padding:12px 16px;margin-bottom:1.2rem;">
-    <div style="font-size:11px;font-weight:600;color:#9da3b4;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">API Token — saved locally, never sent anywhere except Monday</div>
-    <div style="display:flex;gap:8px;">
-      <input type="password" id="manualToken" placeholder="eyJhbGci..." style="flex:1;background:#2e3248;border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:7px 10px;color:#e8eaf0;font-size:13px;outline:none;" />
-      <button onclick="initWithToken(document.getElementById('manualToken').value.trim())" style="padding:7px 16px;background:#1D9E75;color:white;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:500;">Connect</button>
+  <div id="v1">
+    <div id="tokenBox" class="token-box hid">
+      <div class="lbl">API Token &mdash; saved locally, only sent to Monday</div>
+      <div class="token-row">
+        <input type="password" id="tokenInput" placeholder="eyJhbGci..." />
+        <button onclick="connectToken()">Connect</button>
+      </div>
+      <div class="token-note">Monday.com &rarr; Profile &rarr; Developers &rarr; API v2 token. Saved in your browser &mdash; enter once.</div>
     </div>
-    <div style="font-size:10px;color:#6b7280;margin-top:6px;">Monday.com → Profile → Developers → API v2 token. Saved in your browser — you only need to enter this once.</div>
-  </div>
-
-<div id="v1">
     <div class="card">
       <div class="sec">Upload this week's CSV exports from Elevated Signals</div>
       <div class="fgrid" id="fgrid"></div>
     </div>
     <div class="acts">
-      <button class="btn pri" id="btnprev" onclick="buildPreview()" disabled>Preview changes →</button>
+      <button class="btn pri" id="btnprev" onclick="buildPreview()" disabled>Preview changes &rarr;</button>
       <span class="anote" id="upnote">0 of 9 files loaded</span>
     </div>
   </div>
-
-  <!-- STEP 2: Preview -->
   <div id="v2" class="hid">
     <div class="stats" id="pstats"></div>
     <div class="card">
       <div class="tabs" id="ptabs"></div>
       <div style="overflow-x:auto">
         <table class="ptable">
-          <thead>
-            <tr>
-              <th style="width:42%">Product</th>
-              <th style="width:16%;text-align:right">Total</th>
-              <th style="width:22%">Lots (Inventory IDs)</th>
-              <th style="width:20%">Action</th>
-            </tr>
-          </thead>
+          <thead><tr><th style="width:42%">Product</th><th style="width:16%;text-align:right">Total</th><th style="width:22%">Lots</th><th style="width:20%">Action</th></tr></thead>
           <tbody id="pbody"></tbody>
         </table>
       </div>
     </div>
     <div class="acts">
-      <button class="btn" onclick="go(1)">← Back</button>
-      <button class="btn pri" onclick="go(3);startSync()">Sync to Monday →</button>
+      <button class="btn" onclick="go(1)">Back</button>
+      <button class="btn pri" onclick="go(3);startSync()">Sync to Monday &rarr;</button>
     </div>
   </div>
-
-  <!-- STEP 3: Sync -->
   <div id="v3" class="hid">
-    <div class="progress-wrap"><div class="progress-bar" id="progBar"></div></div>
+    <div class="prog-wrap"><div class="prog-bar" id="progBar"></div></div>
     <div class="card">
       <div class="sec" style="margin-bottom:10px">Sync log</div>
       <div class="log" id="slog"></div>
     </div>
     <div class="acts hid" id="sdone">
-      <button class="btn pri" onclick="reset()">Sync another week</button>
+      <button class="btn pri" onclick="resetApp()">Sync another week</button>
       <span class="anote" id="sdonemsg"></span>
     </div>
   </div>
-
 </div>
-
 <script>
-// --- Config -----------------------------------------------
-const BOARD_ID_FALLBACK = 18403841373; // fallback if SDK doesn't provide context
-const COL_TOTAL    = 'numeric_mm1dvn32';
-const COL_DATE     = 'date_mm1t1exm';
-const CATEGORIES = [
-  { key:'tins',   label:'Tins' },
-  { key:'c84',    label:'Cones 84/26' },
-  { key:'c109',   label:'Cones 109/26' },
-  { key:'bags',   label:'Bags' },
-  { key:'master', label:'Master Cases' },
-  { key:'tubes',  label:'Tubes' },
-  { key:'jars',   label:'Jars' },
-  { key:'tips',   label:'Glass Tips' },
-  { key:'hash',   label:'Hash Hole' },
+var BOARD_ID = 18403841373;
+var COL_TOTAL = 'numeric_mm1dvn32';
+var COL_DATE = 'date_mm1t1exm';
+var CATS = [
+  {key:'tins',label:'Tins'},
+  {key:'c84',label:'Cones 84/26'},
+  {key:'c109',label:'Cones 109/26'},
+  {key:'bags',label:'Bags'},
+  {key:'master',label:'Master Cases'},
+  {key:'tubes',label:'Tubes'},
+  {key:'jars',label:'Jars'},
+  {key:'tips',label:'Glass Tips'},
+  {key:'hash',label:'Hash Hole'}
 ];
+var loaded = {}, parsed = {}, preview = {};
 
-// --- State ------------------------------------------------
-let mondayAPI = null;
-let boardId   = BOARD_ID_FALLBACK;
-let loaded    = {};
-let parsed    = {};
-let preview   = {};
-
-// --- Auth ---------------------------------------------------------------------
 function mFetch(q) {
-  const t = localStorage.getItem('inv_sync_token');
-  if (!t) throw new Error('no token');
+  var t = localStorage.getItem('inv_sync_token');
+  if (!t) throw new Error('No token saved');
   return fetch('https://api.monday.com/v2', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': t, 'API-Version': '2024-01' },
-    body: JSON.stringify({ query: q })
-  }).then(r => r.json());
+    headers: {'Content-Type':'application/json','Authorization':t,'API-Version':'2024-01'},
+    body: JSON.stringify({query: q})
+  }).then(function(r){ return r.json(); });
 }
-window.mondayAPI = mFetch;
 
-function initWithToken(token) {
-  localStorage.setItem('inv_sync_token', token.trim());
-  window.mondayAPI = mFetch;
-  mFetch('{ me { name } }').then(res => {
-    if (res?.data?.me?.name) {
-      document.getElementById('sdkPill').className = 'sdk-pill ok';
-      document.getElementById('sdkStatus').textContent = res.data.me.name;
-      document.getElementById('tokenSection').style.display = 'none';
+function connectToken() {
+  var t = document.getElementById('tokenInput').value.trim();
+  if (!t) return;
+  localStorage.setItem('inv_sync_token', t);
+  checkToken();
+}
+
+function checkToken() {
+  var t = localStorage.getItem('inv_sync_token');
+  if (!t) {
+    setPill('err', 'enter token below');
+    document.getElementById('tokenBox').classList.remove('hid');
+    return;
+  }
+  mFetch('{ me { name } }').then(function(res) {
+    if (res && res.data && res.data.me && res.data.me.name) {
+      setPill('ok', res.data.me.name);
+      document.getElementById('tokenBox').classList.add('hid');
     } else {
-      document.getElementById('sdkPill').className = 'sdk-pill err';
-      document.getElementById('sdkStatus').textContent = 'invalid token';
+      setPill('err', 'invalid token');
+      document.getElementById('tokenBox').classList.remove('hid');
     }
+  }).catch(function() {
+    setPill('err', 'enter token below');
+    document.getElementById('tokenBox').classList.remove('hid');
   });
 }
 
-const _saved = localStorage.getItem('inv_sync_token');
-if (_saved) {
-  mFetch('{ me { name } }').then(res => {
-    if (res?.data?.me?.name) {
-      document.getElementById('sdkPill').className = 'sdk-pill ok';
-      document.getElementById('sdkStatus').textContent = res.data.me.name;
-      document.getElementById('tokenSection').style.display = 'none';
-    } else {
-      document.getElementById('sdkPill').className = 'sdk-pill err';
-      document.getElementById('sdkStatus').textContent = 'enter token below';
-      document.getElementById('tokenSection').style.display = 'block';
-    }
-  });
-} else {
-  document.getElementById('sdkPill').className = 'sdk-pill err';
-  document.getElementById('sdkStatus').textContent = 'enter token below';
-  document.getElementById('tokenSection').style.display = 'block';
+function setPill(cls, txt) {
+  document.getElementById('sdkPill').className = 'sdk-pill ' + cls;
+  document.getElementById('sdkStatus').textContent = txt;
 }
 
-// --- Step nav ---------------------------------------------
 function go(n) {
-  [1,2,3].forEach(i => {
+  [1,2,3].forEach(function(i) {
     document.getElementById('s'+i).classList.toggle('active', i===n);
     document.getElementById('v'+i).classList.toggle('hid', i!==n);
   });
 }
 
-// --- File grid --------------------------------------------
 function buildGrid() {
-  const g = document.getElementById('fgrid');
+  var g = document.getElementById('fgrid');
   g.innerHTML = '';
-  CATEGORIES.forEach(c => {
-    const s = document.createElement('div');
+  CATS.forEach(function(c) {
+    var s = document.createElement('div');
     s.className = 'slot' + (loaded[c.key] ? ' ok' : '');
-    s.innerHTML = `
-      <div class="cat">${c.label}</div>
-      <div class="fn">${loaded[c.key] ? loaded[c.key].name : 'click to select CSV'}</div>
-      <input type="file" accept=".csv" onchange="onFile('${c.key}',this)"/>`;
+    s.innerHTML = '<div class="cat">'+c.label+'</div><div class="fn">'+(loaded[c.key] ? loaded[c.key].name : 'click to select CSV')+'</div><input type="file" accept=".csv" />';
+    s.querySelector('input').addEventListener('change', (function(key){ return function(e){ onFile(key, e.target); }; })(c.key));
     g.appendChild(s);
   });
 }
 
 function onFile(key, inp) {
-  const f = inp.files[0];
+  var f = inp.files[0];
   if (!f) return;
   loaded[key] = f;
-  const r = new FileReader();
-  r.onload = e => { parsed[key] = parseCSV(e.target.result); buildGrid(); updateNote(); };
+  var r = new FileReader();
+  r.onload = function(e) {
+    parsed[key] = parseCSV(e.target.result);
+    buildGrid();
+    updateNote();
+  };
   r.readAsText(f);
 }
 
 function parseCSV(txt) {
   function parseLine(line) {
-    const fields = [];
-    let i = 0;
+    var fields = [], i = 0;
     while (i < line.length) {
       if (line[i] === '"') {
-        let field = '';
+        var field = '';
         i++;
         while (i < line.length) {
           if (line[i] === '"' && line[i+1] === '"') { field += '"'; i += 2; }
@@ -431,86 +232,75 @@ function parseCSV(txt) {
         fields.push(field.trim());
         if (line[i] === ',') i++;
       } else {
-        const end = line.indexOf(',', i);
+        var end = line.indexOf(',', i);
         if (end === -1) { fields.push(line.slice(i).trim()); break; }
         else { fields.push(line.slice(i, end).trim()); i = end + 1; }
       }
     }
     return fields;
   }
-  const raw = txt.replace(/^\uFEFF/, '');
-  const lines = [];
-  let cur = '', inQ = false;
-  for (let i = 0; i < raw.length; i++) {
+  var raw = txt.replace(/^\uFEFF/, '');
+  var lines = [], cur = '', inQ = false;
+  for (var i = 0; i < raw.length; i++) {
     if (raw[i] === '"') { inQ = !inQ; cur += raw[i]; }
-    else if ((raw[i] === '
-' || (raw[i] === '
-' && raw[i+1] === '
-')) && !inQ) {
-      if (raw[i] === '
-') i++;
+    else if ((raw[i] === '\n' || (raw[i] === '\r' && raw[i+1] === '\n')) && !inQ) {
+      if (raw[i] === '\r') i++;
       if (cur.trim()) lines.push(cur);
       cur = '';
     } else { cur += raw[i]; }
   }
   if (cur.trim()) lines.push(cur);
-  const hdrs = parseLine(lines[0]);
-  return lines.slice(1).map(l => {
-    const vals = parseLine(l);
-    const row = {};
-    hdrs.forEach((h, i) => row[h] = (vals[i] || '').trim());
+  var hdrs = parseLine(lines[0]);
+  return lines.slice(1).map(function(l) {
+    var vals = parseLine(l), row = {};
+    hdrs.forEach(function(h, i) { row[h] = (vals[i] || '').trim(); });
     return row;
   });
 }
 
-function updateNote() {
-  const n = Object.keys(loaded).length;
-  document.getElementById('upnote').textContent = n + ' of 9 files loaded';
-  document.getElementById('btnprev').disabled = n === 0;
-}
-
-// --- Consolidate ------------------------------------------
 function consolidate(rows) {
-  const products = {};
-  rows.forEach(r => {
-    const name  = (r['Inventory Product Name'] || '').trim();
-    const invId = (r['Inventory Id'] || '').trim();
-    const lot   = (r['Lot Name'] || '').trim();
-    const total = parseInt(r['Total']) || 0;
+  var products = {};
+  rows.forEach(function(r) {
+    var name = (r['Inventory Product Name'] || '').trim();
+    var invId = (r['Inventory Id'] || '').trim();
+    var lot = (r['Lot Name'] || '').trim();
+    var total = parseInt(r['Total']) || 0;
     if (!name) return;
-    if (!products[name]) products[name] = { total: 0, lots: [] };
+    if (!products[name]) products[name] = {total:0, lots:[]};
     products[name].total += total;
-    if (invId) products[name].lots.push({ invId, lot, total });
+    if (invId) products[name].lots.push({invId:invId, lot:lot, total:total});
   });
   return products;
 }
 
-// --- Preview ----------------------------------------------
+function updateNote() {
+  var n = Object.keys(loaded).length;
+  document.getElementById('upnote').textContent = n + ' of 9 files loaded';
+  document.getElementById('btnprev').disabled = n === 0;
+}
+
 function buildPreview() {
   preview = {};
-  CATEGORIES.forEach(c => {
-    if (parsed[c.key]) preview[c.key] = { label: c.label, products: consolidate(parsed[c.key]) };
+  CATS.forEach(function(c) {
+    if (parsed[c.key]) preview[c.key] = {label:c.label, products:consolidate(parsed[c.key])};
   });
-
-  const keys = Object.keys(preview);
-  let totalProds = 0, totalLots = 0;
-  keys.forEach(k => {
+  var keys = Object.keys(preview);
+  var totalProds = 0, totalLots = 0;
+  keys.forEach(function(k) {
     totalProds += Object.keys(preview[k].products).length;
-    Object.values(preview[k].products).forEach(p => totalLots += p.lots.length);
+    Object.values(preview[k].products).forEach(function(p) { totalLots += p.lots.length; });
   });
-
-  document.getElementById('pstats').innerHTML = `
-    <div class="stat"><div class="v">${keys.length}</div><div class="lb">categories</div></div>
-    <div class="stat"><div class="v">${totalProds}</div><div class="lb">products (items)</div></div>
-    <div class="stat"><div class="v">${totalLots}</div><div class="lb">lots (subitems)</div></div>`;
-
-  const tabs = document.getElementById('ptabs');
+  document.getElementById('pstats').innerHTML =
+    '<div class="stat"><div class="v">'+keys.length+'</div><div class="lb">categories</div></div>'+
+    '<div class="stat"><div class="v">'+totalProds+'</div><div class="lb">products (items)</div></div>'+
+    '<div class="stat"><div class="v">'+totalLots+'</div><div class="lb">lots (subitems)</div></div>';
+  var tabs = document.getElementById('ptabs');
   tabs.innerHTML = '';
-  keys.forEach((k, i) => {
-    const t = document.createElement('div');
-    t.className = 'tab' + (i === 0 ? ' on' : '');
+  keys.forEach(function(k, i) {
+    var t = document.createElement('div');
+    t.className = 'tab' + (i===0?' on':'');
     t.textContent = preview[k].label;
-    t.onclick = () => showTab(k, t);
+    t.onclick = (function(key, el){ return function(){ showTab(key, el); }; })(k, t);
     tabs.appendChild(t);
   });
   if (keys[0]) showTab(keys[0], tabs.children[0]);
@@ -518,179 +308,125 @@ function buildPreview() {
 }
 
 function showTab(key, el) {
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('on'));
+  document.querySelectorAll('.tab').forEach(function(t){ t.classList.remove('on'); });
   el.classList.add('on');
-  const body  = document.getElementById('pbody');
+  var body = document.getElementById('pbody');
   body.innerHTML = '';
-  Object.entries(preview[key].products).forEach(([name, info]) => {
-    const tr = document.createElement('tr');
-    const lotsHtml = info.lots.map(l =>
-      `<span>${l.invId} - ${l.lot} - ${l.total.toLocaleString()}</span>`
-    ).join('');
-    tr.innerHTML = `
-      <td class="pname">${name}</td>
-      <td class="ptotal" style="text-align:right">${info.total.toLocaleString()}</td>
-      <td><div class="sub">${lotsHtml}</div></td>
-      <td><span class="badge b-new">will sync</span></td>`;
+  Object.entries(preview[key].products).forEach(function(entry) {
+    var name = entry[0], info = entry[1];
+    var tr = document.createElement('tr');
+    var lotsHtml = info.lots.map(function(l){ return '<span>'+l.invId+' &middot; '+l.lot+' &middot; '+l.total.toLocaleString()+'</span>'; }).join('');
+    tr.innerHTML = '<td style="font-weight:500">'+name+'</td><td style="text-align:right;font-variant-numeric:tabular-nums">'+info.total.toLocaleString()+'</td><td><div class="sub">'+lotsHtml+'</div></td><td><span style="background:rgba(29,158,117,0.15);color:#1D9E75;padding:2px 7px;border-radius:99px;font-size:10px;font-weight:600">will sync</span></td>';
     body.appendChild(tr);
   });
 }
 
-// --- Sync -------------------------------------------------
-function esc(s) { return s.replace(/\\/g, '\\\\').replace(/"/g, '\\"'); }
-function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
-function setProgress(pct) {
-  document.getElementById('progBar').style.width = pct + '%';
-}
-
-async function api(query) {
-  if (window.mondayAPI) return window.mondayAPI(query);
-  // Fallback: try localStorage token directly
-  const t = localStorage.getItem('inv_sync_token');
-  if (t) {
-    const res = await fetch('https://api.monday.com/v2', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': t, 'API-Version': '2024-01' },
-      body: JSON.stringify({ query })
-    });
-    return res.json();
-  }
-  throw new Error('Monday SDK not connected');
-}
+function delay(ms) { return new Promise(function(r){ setTimeout(r, ms); }); }
+function esc(s) { return s.replace(/\\/g,'\\\\').replace(/"/g,'\\"'); }
+function setProgress(pct) { document.getElementById('progBar').style.width = pct + '%'; }
 
 async function startSync() {
-  const logEl = document.getElementById('slog');
+  var logEl = document.getElementById('slog');
   logEl.innerHTML = '';
   setProgress(0);
+  var today = new Date().toISOString().split('T')[0];
 
-  function log(msg, type = '') {
-    const d = document.createElement('div');
-    d.className = 'll ' + type;
-    const t = new Date().toLocaleTimeString();
-    d.textContent = t + '  ' + msg;
+  function log(msg, type) {
+    var d = document.createElement('div');
+    d.className = 'll ' + (type||'');
+    d.textContent = new Date().toLocaleTimeString() + '  ' + msg;
     logEl.appendChild(d);
     logEl.scrollTop = logEl.scrollHeight;
   }
 
-  const TODAY = new Date().toISOString().split('T')[0];
-
   try {
     log('Fetching board structure...');
-    const bd = await api(`{
-      boards(ids:[${boardId}]) {
-        groups { id title }
-        items_page(limit:500) {
-          items { id name group { id } subitems { id name column_values { id text } } }
-        }
-      }
-    }`);
+    var bd = await mFetch('{ boards(ids:['+BOARD_ID+']) { groups { id title } items_page(limit:500) { items { id name group { id } subitems { id name } } } } }');
+    var board = bd && bd.data && bd.data.boards && bd.data.boards[0];
+    if (!board) { log('Board not found', 'err'); return; }
+    log('Board loaded: '+board.groups.length+' groups, '+board.items_page.items.length+' items', 'ok');
 
-    const board = bd?.data?.boards?.[0];
-    if (!board) { log('Board not found - check board ID.', 'err'); return; }
+    var groupMap = {};
+    board.groups.forEach(function(g){ groupMap[g.title.toLowerCase()] = g.id; });
 
-    log('Board loaded: ' + board.groups.length + ' groups, ' + board.items_page.items.length + ' items', 'ok');
-
-    const groupMap = {};
-    board.groups.forEach(g => groupMap[g.title.toLowerCase()] = g.id);
-
-    const itemMap = {};
-    board.items_page.items.forEach(item => {
-      itemMap[item.name.toLowerCase()] = {
-        id: item.id,
-        groupId: item.group.id,
-        subitems: item.subitems || []
-      };
+    var itemMap = {};
+    board.items_page.items.forEach(function(item){
+      itemMap[item.name.toLowerCase()] = {id:item.id, groupId:item.group.id, subitems:item.subitems||[]};
     });
 
-    // Count total operations for progress
-    let totalOps = 0, doneOps = 0;
-    const catKeys = Object.keys(preview);
-    catKeys.forEach(k => totalOps += Object.keys(preview[k].products).length);
+    var totalOps = 0, doneOps = 0;
+    Object.keys(preview).forEach(function(k){ totalOps += Object.keys(preview[k].products).length; });
 
-    let created = 0, updated = 0, subCreated = 0;
+    var created = 0, updated = 0, subCreated = 0, subUpdated = 0;
 
-    for (const cat of CATEGORIES) {
+    for (var ci = 0; ci < CATS.length; ci++) {
+      var cat = CATS[ci];
       if (!preview[cat.key]) continue;
 
-      let groupId = groupMap[cat.label.toLowerCase()];
+      var groupId = groupMap[cat.label.toLowerCase()];
       if (!groupId) {
-        log('Creating group: ' + cat.label, 'grp');
-        const res = await api(`mutation { create_group(board_id:${boardId}, group_name:"${esc(cat.label)}") { id } }`);
-        groupId = res?.data?.create_group?.id;
-        if (!groupId) { log('Failed to create group: ' + cat.label, 'err'); continue; }
-        log('Group created: ' + cat.label, 'ok');
+        log('Creating group: '+cat.label, 'grp');
+        var gr = await mFetch('mutation { create_group(board_id:'+BOARD_ID+', group_name:"'+esc(cat.label)+'") { id } }');
+        groupId = gr && gr.data && gr.data.create_group && gr.data.create_group.id;
+        if (!groupId) { log('Failed to create group: '+cat.label, 'err'); continue; }
+        log('Group created: '+cat.label, 'ok');
       }
 
-      log('- ' + cat.label, 'grp');
+      log('-- ' + cat.label, 'grp');
+      var products = preview[cat.key].products;
+      var productEntries = Object.entries(products);
 
-      for (const [productName, info] of Object.entries(preview[cat.key].products)) {
-        const existing = itemMap[productName.toLowerCase()];
-        let itemId;
+      for (var pi = 0; pi < productEntries.length; pi++) {
+        var productName = productEntries[pi][0];
+        var info = productEntries[pi][1];
+        var existing = itemMap[productName.toLowerCase()];
+        var itemId;
 
-        const cv = JSON.stringify({
-          [COL_TOTAL]: info.total.toString(),
-          [COL_DATE]: { date: TODAY }
-        });
+        var cv = JSON.stringify({});
+        cv[COL_TOTAL] = info.total.toString();
+        var cvObj = {};
+        cvObj[COL_TOTAL] = info.total.toString();
+        cvObj[COL_DATE] = {date: today};
+        var cvStr = esc(JSON.stringify(cvObj));
 
         if (existing) {
-          // Update total on existing item
-          await api(`mutation {
-            change_multiple_column_values(
-              board_id: ${boardId},
-              item_id: ${existing.id},
-              column_values: "${esc(cv)}"
-            ) { id }
-          }`);
-          // Subitems will update the rollup total automatically
+          await mFetch('mutation { change_multiple_column_values(board_id:'+BOARD_ID+', item_id:'+existing.id+', column_values:"'+cvStr+'") { id } }');
           itemId = existing.id;
-          log('  updated: ' + productName + ' - ' + info.total.toLocaleString(), 'ok');
+          log('  updated: '+productName+' -> '+info.total.toLocaleString(), 'ok');
           updated++;
         } else {
-          // Create new item
-          const res = await api(`mutation {
-            create_item(
-              board_id: ${boardId},
-              group_id: "${groupId}",
-              item_name: "${esc(productName)}",
-              column_values: "${esc(cv)}"
-            ) { id }
-          }`);
-          itemId = res?.data?.create_item?.id;
-          if (!itemId) { log('  error creating: ' + productName, 'err'); continue; }
-          log('  created: ' + productName, 'ok');
+          var res = await mFetch('mutation { create_item(board_id:'+BOARD_ID+', group_id:"'+groupId+'", item_name:"'+esc(productName)+'", column_values:"'+cvStr+'") { id } }');
+          itemId = res && res.data && res.data.create_item && res.data.create_item.id;
+          if (!itemId) { log('  error creating: '+productName, 'err'); doneOps++; continue; }
+          log('  created: '+productName, 'ok');
           created++;
         }
 
         await delay(150);
 
-        // Subitems - check existing by name, create if missing
-        // Map existing subitems by Inventory ID (first segment of name before ' - ')
-        const existingSubsByInvId = {};
-        (existing?.subitems || []).forEach(s => {
-          const invIdPart = s.name.split(' - ')[0].trim();
+        var existingSubsByInvId = {};
+        var subs = existing ? (existing.subitems || []) : [];
+        subs.forEach(function(s) {
+          var invIdPart = s.name.split(' - ')[0].trim();
           existingSubsByInvId[invIdPart] = s.id;
         });
 
-        for (const lot of info.lots) {
-          const subName = lot.invId + ' - ' + lot.lot + ' - ' + lot.total.toLocaleString();
-          const existingSubId = existingSubsByInvId[lot.invId];
+        for (var li = 0; li < info.lots.length; li++) {
+          var lot = info.lots[li];
+          var subName = lot.invId + ' - ' + lot.lot + ' - ' + lot.total.toLocaleString();
+          var existingSubId = existingSubsByInvId[lot.invId];
           if (existingSubId) {
-            // Update existing subitem name (which contains the updated total)
-            await api(`mutation {
-              change_simple_column_value(board_id: ${boardId}, item_id: ${existingSubId}, column_id: "name", value: "${esc(subName)}") { id }
-            }`);
-            log('    ~ ' + lot.invId + ' ' + lot.lot + ' - ' + lot.total.toLocaleString(), 'ok');
+            await mFetch('mutation { change_simple_column_value(board_id:'+BOARD_ID+', item_id:'+existingSubId+', column_id:"name", value:"'+esc(subName)+'") { id } }');
+            log('    ~ '+lot.invId+' '+lot.lot+' -> '+lot.total.toLocaleString(), 'ok');
             subUpdated++;
             await delay(150);
           } else {
-            const res = await api(`mutation {
-              create_subitem(parent_item_id: ${itemId}, item_name: "${esc(subName)}") { id }
-            }`);
-            if (res?.data?.create_subitem?.id) {
-              log('    + ' + lot.invId + ' ' + lot.lot + ' ' + lot.total.toLocaleString(), 'ok');
+            var sr = await mFetch('mutation { create_subitem(parent_item_id:'+itemId+', item_name:"'+esc(subName)+'") { id } }');
+            if (sr && sr.data && sr.data.create_subitem && sr.data.create_subitem.id) {
+              log('    + '+lot.invId+' '+lot.lot+' '+lot.total.toLocaleString(), 'ok');
               subCreated++;
             } else {
-              log('    err subitem: ' + lot.invId, 'err');
+              log('    err subitem: '+lot.invId, 'err');
             }
             await delay(150);
           }
@@ -702,30 +438,26 @@ async function startSync() {
     }
 
     setProgress(100);
-    log('');
-    log('Done!  Items: ' + created + ' created, ' + updated + ' updated.  Subitems: ' + subCreated + ' new.', 'ok');
-
+    log('', '');
+    log('Done!  Items: '+created+' created, '+updated+' updated.  Subitems: '+subCreated+' new, '+subUpdated+' updated.', 'ok');
     document.getElementById('sdone').classList.remove('hid');
-    document.getElementById('sdonemsg').textContent =
-      created + ' items created - ' + updated + ' updated - ' + subCreated + ' subitems new - ' + subUpdated + ' subitems updated';
+    document.getElementById('sdonemsg').textContent = created+' created, '+updated+' updated, '+subCreated+' subitems new, '+subUpdated+' updated';
 
   } catch(err) {
-    log('Error: ' + err.message, 'err');
+    log('Error: '+err.message, 'err');
   }
 }
 
-// --- Reset ------------------------------------------------
-function reset() {
+function resetApp() {
   loaded = {}; parsed = {}; preview = {};
-  buildGrid(); updateNote();
-  setProgress(0);
+  buildGrid(); updateNote(); setProgress(0);
   document.getElementById('sdone').classList.add('hid');
   go(1);
 }
 
-// --- Init -------------------------------------------------
 buildGrid();
 updateNote();
+checkToken();
 </script>
 </body>
 </html>
